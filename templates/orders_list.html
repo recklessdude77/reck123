@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Customer Records</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; color: #333; display: flex; flex-direction: column; min-height: 100vh; }
+        .container { flex: 1; padding: 20px; }
+        h2 { color: #2c3e50; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; background: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #0066FF; color: white; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        tr:hover { background-color: #f8f9fa; }
+        .icon-btn { background: none; border: none; cursor: pointer; font-size: 16px; margin: 0 5px; transition: transform 0.2s; }
+        .edit-btn { color: #f39c12; }
+        .delete-btn { color: #e74c3c; }
+        .icon-btn:hover { transform: scale(1.2); }
+        a { text-decoration: none; color: #3498db; font-weight: bold; display: inline-block; margin-top: 20px; }
+        a:hover { text-decoration: underline; }
+        .header, .footer { background-color: #0066FF; color: white; padding: 15px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .footer p { margin: 0; font-size: 14px; }
+        .status-badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .status-gray { background-color: #e0e0e0; color: #333; }
+        .status-blue { background-color: #e3f2fd; color: #0d47a1; }
+        .status-orange { background-color: #fff3e0; color: #e65100; }
+        .status-green { background-color: #e8f5e9; color: #1b5e20; }
+        .status-red { background-color: #ffebee; color: #b71c1c; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Factory Order Management</h1>
+</div>
+
+<div class="container">
+
+<h2>All Visitors</h2>
+
+<table>
+    <tr>
+        <th>Order ID</th>
+        <th>Cust ID</th>
+        <th>Name</th>
+        <th>Mobile</th>
+        <th>Address</th>
+        <th>City</th>
+        <th>State</th>
+        <th>PIN</th>
+        <th>Type</th>
+        <th>Acres</th>
+        <th>No of Units</th>
+        <th>Soil</th>
+        <th>Product</th>
+        <th>Material</th>
+        <th>Delivery Date</th>
+        <!-- <th>Material Cost</th> -->
+        <!-- <th>Install Cost</th> -->
+        <!-- <th>Transport Cost</th> -->
+        <!-- <th>Total Cost</th> -->
+        <!-- <th>Advance Paid</th> -->
+        <th>Status</th>
+        <th>Action</th>
+    </tr>
+
+    {% for row in rows %}
+    <tr>
+        <td>{{ row['order_id'] }}</td>
+        <td>{{ row['customer_id'] }}</td>
+        <td>{{ row['name'] }}</td>
+        <td>{{ row['mobile'] }}</td>
+        <td>{{ row['address'] }}</td>
+        <td>{{ row['city'] }}</td>
+        <td>{{ row['state'] }}</td>
+        <td>{{ row['pincode'] }}</td>
+        <td>{{ row['order_type'] }}</td>
+        <td>{{ row['acres'] }}</td>
+        <td>{{ row['no_of_units'] }}</td>
+        <td>{{ row['soil_type'] }}</td>
+        <td>{{ row['product_type'] }}</td>
+        <td>{{ row['product_material'] }}</td>
+        <!-- <td>{{ row[12] }}</td> -->
+        <!-- <td>{{ row[13] }}</td> -->
+        <!-- <td>{{ row[14] }}</td> -->
+        <!-- <td>{{ row[15] }}</td> -->
+        <td>{{ row['delivery_date'].split('-')[2] }}-{{ row['delivery_date'].split('-')[1] }}-{{ row['delivery_date'].split('-')[0] }}</td>
+        <!-- <td>{{ "%.2f"|format(row['advance_paid']|float) }}</td> -->
+        <td>
+            {% set status = row['status'] if row['status'] else 'Order placed' %}
+            <form action="/update_status" method="POST">
+                <input type="hidden" name="order_id" value="{{ row['order_id'] }}">
+                <select name="status" onchange="this.form.submit()" style="padding: 5px; border-radius: 4px; border: 1px solid #ddd; font-size: 12px;">
+                    {% set steps = workflows.get(row['order_type'], workflows['Material Purchase']) %}
+                    {% for step in steps %}
+                    <option value="{{ step }}" {% if status == step %}selected{% endif %}>{{ step }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </td>
+        <td>
+            <a href="/edit_order/{{ row['order_id'] }}" class="icon-btn edit-btn" title="Edit"><i class="fas fa-edit"></i></a>
+            <form action="/delete_order" method="POST" style="display:inline;">
+                <input type="hidden" name="order_id" value="{{ row['order_id'] }}">
+                <button type="submit" class="icon-btn delete-btn" onclick="return confirm('Are you sure you want to delete Order #{{ row['order_id'] }}?');" title="Delete"><i class="fas fa-trash"></i></button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+
+</table>
+
+<br>
+<a href="/">Back to Form</a>
+
+</div>
+
+<div class="footer">
+    <p>&copy; 2026 Rishaban Sivaramakrishnan</p>
+</div>
+
+</body>
+</html>

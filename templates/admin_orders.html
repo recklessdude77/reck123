@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Order Management</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        .container { flex: 1; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .header, .footer { background-color: #d32f2f; color: white; padding: 15px 20px; text-align: center; }
+        h2 { text-align: center; color: #2c3e50; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-top: 20px; font-size: 14px; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #37474f; color: white; font-weight: 600; text-transform: uppercase; font-size: 12px; }
+        tr:hover { background-color: #f5f5f5; }
+        .btn { display: inline-block; padding: 6px 12px; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; border: none; cursor: pointer; }
+        .btn-approve { background-color: #27ae60; }
+        .btn-approve:hover { background-color: #219150; }
+        .btn-details { background-color: #3498db; }
+        .btn-details:hover { background-color: #2980b9; }
+        .btn-update { background-color: #f39c12; }
+        .btn-update:hover { background-color: #e67e22; }
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #3498db; text-decoration: none; }
+        .status-placed { background-color: #e67e22; color: white; padding: 4px 8px; border-radius: 12px; font-weight: bold; }
+        .payment-unpaid { background-color: #e74c3c; color: white; padding: 4px 8px; border-radius: 12px; }
+        .payment-partial { background-color: #f1c40f; color: #333; padding: 4px 8px; border-radius: 12px; }
+        .payment-paid { background-color: #2ecc71; color: white; padding: 4px 8px; border-radius: 12px; }
+        select { padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
+        .flash { padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        .flash.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Admin Action Center</h1>
+</div>
+
+<div class="container">
+    <h2>Orders Requiring Action</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Date</th>
+                <th>Total Cost</th>
+                <th>Order Status</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td><a href="{{ url_for('order_details', order_id=order.order_id) }}">{{ order.order_id }}</a></td>
+                <td>{{ order.name }}<br><small>{{ order.mobile }}</small></td>
+                <td>{{ order.created_at[:10] }}</td>
+                <td>₹{{ "%.2f"|format(order.total_cost) }}</td>
+                <td>
+                    {% if order.status == 'Order placed' %}
+                        <span class="status-placed">{{ order.status }}</span>
+                    {% else %}
+                        {{ order.status }}
+                    {% endif %}
+                </td>
+                <td>
+                    <form action="{{ url_for('admin_update_payment_status') }}" method="POST" style="display: flex; align-items: center; gap: 5px;">
+                        <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                        <select name="payment_status">
+                            <option value="Unpaid" {% if order.payment_status == 'Unpaid' %}selected{% endif %}>Unpaid</option>
+                            <option value="Partially Paid" {% if order.payment_status == 'Partially Paid' %}selected{% endif %}>Partially Paid</option>
+                            <option value="Paid" {% if order.payment_status == 'Paid' %}selected{% endif %}>Paid</option>
+                        </select>
+                        <button type="submit" class="btn btn-update">Set</button>
+                    </form>
+                </td>
+                <td>
+                    {% if order.status == 'Order placed' %}
+                    <form action="{{ url_for('admin_approve_order') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="order_id" value="{{ order.order_id }}">
+                        <button type="submit" class="btn btn-approve">Approve</button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ url_for('order_details', order_id=order.order_id) }}" class="btn btn-details">Details</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center;">No orders require immediate action.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <a href="/dashboard" class="back-link">Back to Dashboard</a>
+</div>
+
+<div class="footer">
+    <p>&copy; 2026 Rishaban Sivaramakrishnan</p>
+</div>
+
+</body>
+</html>

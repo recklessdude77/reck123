@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Details - {{ order['order_id'] }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; margin: 0; padding: 0; color: #333; }
+        .header { background-color: #0066FF; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .back-link { color: #666; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-link:hover { color: #0066FF; }
+        
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background-color: #f8f9fa; }
+        .card-header h2 { margin: 0; font-size: 18px; color: #2c3e50; }
+        .card-body { padding: 20px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .info-group { margin-bottom: 15px; }
+        .info-label { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .info-value { font-size: 16px; font-weight: 500; }
+        
+        .status-badge { padding: 5px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .status-Order.placed { background-color: #e0e0e0; color: #333; }
+        .status-Processing { background-color: #e3f2fd; color: #0d47a1; }
+        .status-In.transit { background-color: #fff3e0; color: #e65100; }
+        .status-Delivered\/installed { background-color: #e8f5e9; color: #1b5e20; }
+        
+        .btn { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; }
+        .btn-primary { background-color: #0066FF; color: white; }
+        .btn-secondary { background-color: #6c757d; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+        
+        .timeline { border-left: 2px solid #ddd; margin-left: 10px; padding-left: 20px; }
+        .timeline-item { position: relative; margin-bottom: 20px; }
+        .timeline-item::before { content: ''; position: absolute; left: -26px; top: 5px; width: 10px; height: 10px; background: #0066FF; border-radius: 50%; }
+        .timeline-date { font-size: 12px; color: #999; }
+        
+        .flash-messages { margin-bottom: 20px; }
+        .alert { padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Order Details</h1>
+    <div>
+        <a href="/dashboard" style="color: white; text-decoration: none; margin-right: 15px;">Dashboard</a>
+        <a href="/logout" style="color: white; text-decoration: none;">Logout</a>
+    </div>
+</div>
+
+<div class="container">
+    <a href="/orders" class="back-link"><i class="fas fa-arrow-left"></i> Back to Orders</a>
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Order #{{ order['order_id'] }}</h2>
+            <div>
+                <span class="status-badge status-{{ order['status']|replace(' ', '.')|replace('/', '') }}">{{ order['status'] }}</span>
+                <a href="/edit_order/{{ order['order_id'] }}" class="btn btn-secondary" style="margin-left: 10px;"><i class="fas fa-edit"></i> Edit</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="grid-2">
+                <div>
+                    <h3 style="margin-top: 0; color: #0066FF;">Customer Info</h3>
+                    <div class="info-group">
+                        <div class="info-label">Name</div>
+                        <div class="info-value">{{ order['name'] }}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Mobile</div>
+                        <div class="info-value">{{ order['mobile'] }}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Address</div>
+                        <div class="info-value">{{ order['address'] }}, {{ order['city'] }}, {{ order['state'] }} - {{ order['pincode'] }}</div>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; color: #0066FF;">Order Info</h3>
+                    <div class="info-group">
+                        <div class="info-label">Product</div>
+                        <div class="info-value">{{ order['product_type'] }} ({{ order['product_material'] }})</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Dimensions</div>
+                        <div class="info-value">{{ order['dimension'] }}</div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Quantity</div>
+                        <div class="info-value">
+                            {% if order['acres'] > 0 %}
+                                {{ order['acres'] }} Acres
+                            {% else %}
+                                {{ order['no_of_units'] }} Units
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="info-group">
+                        <div class="info-label">Delivery Date</div>
+                        <div class="info-value">{{ order['delivery_date'] }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <h2>Financials</h2>
+            </div>
+            <div class="card-body">
+                <table style="margin-top: 0;">
+                    <tr>
+                        <td>Material Cost</td>
+                        <td style="text-align: right;">₹{{ "{:,.2f}".format(order['material_cost']) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Installation Cost</td>
+                        <td style="text-align: right;">₹{{ "{:,.2f}".format(order['installation_cost']) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Transport Cost</td>
+                        <td style="text-align: right;">₹{{ "{:,.2f}".format(order['transport_cost']) }}</td>
+                    </tr>
+                    <tr style="font-weight: bold; border-top: 2px solid #eee;">
+                        <td>Total Cost</td>
+                        <td style="text-align: right;">₹{{ "{:,.2f}".format(order['total_cost']) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Advance Paid</td>
+                        <td style="text-align: right; color: green;">- ₹{{ "{:,.2f}".format(order['advance_paid']) }}</td>
+                    </tr>
+                    <tr style="font-weight: bold; font-size: 18px;">
+                        <td>Balance Due</td>
+                        <td style="text-align: right; color: #d32f2f;">₹{{ "{:,.2f}".format(order['balance_due']) }}</td>
+                    </tr>
+                </table>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h4>Record Payment</h4>
+                    <form action="/add_payment/{{ order['order_id'] }}" method="POST">
+                        <div style="display: flex; gap: 10px;">
+                            <input type="number" name="amount" placeholder="Amount" step="0.01" required style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <select name="payment_method" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <input type="text" name="reference" placeholder="Reference / Transaction ID" style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+                        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Add Payment</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Activity & Payments</h2>
+            </div>
+            <div class="card-body">
+                <h3>Payment History</h3>
+                {% if payments %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Method</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment['payment_date'] }}</td>
+                            <td>{{ payment['payment_method'] }}</td>
+                            <td>₹{{ "{:,.2f}".format(payment['amount']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p style="color: #999; font-style: italic;">No payments recorded yet.</p>
+                {% endif %}
+
+                <h3 style="margin-top: 20px;">Activity Log</h3>
+                <div class="timeline">
+                    {% for activity in activities %}
+                    <div class="timeline-item">
+                        <div class="timeline-date">{{ activity['timestamp'] }}</div>
+                        <div><strong>{{ activity['user'] }}</strong>: {{ activity['details'] }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
