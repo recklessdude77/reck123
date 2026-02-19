@@ -5,7 +5,6 @@ import uuid
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from twilio.rest import Client
 import math
 import os
 from functools import wraps
@@ -53,19 +52,11 @@ except json.JSONDecodeError:
 EMAIL_CONFIG = {
     "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
     "SMTP_PORT": int(os.environ.get("SMTP_PORT", 465)),
-    "SENDER_EMAIL": os.environ.get("SENDER_EMAIL"),
-    "SENDER_PASSWORD": os.environ.get("SENDER_PASSWORD")
+    "SENDER_EMAIL": "rishaban03@gmail.com",  # REPLACE with your Gmail address
+    "SENDER_PASSWORD": "xxxx xxxx xxxx xxxx" # REPLACE with your Gmail App Password
 }
 
-# Twilio configuration for SMS and WhatsApp from environment variables
-TWILIO_CONFIG = {
-    "ACCOUNT_SID": os.environ.get("TWILIO_ACCOUNT_SID"),
-    "AUTH_TOKEN": os.environ.get("TWILIO_AUTH_TOKEN"),
-    "FROM_SMS": os.environ.get("TWILIO_FROM_SMS"),
-    "FROM_WHATSAPP": os.environ.get("TWILIO_FROM_WHATSAPP"),
-}
-
-RECIPIENT_EMAILS = [email.strip() for email in os.environ.get("RECIPIENT_EMAILS", "").split(',') if email.strip()]
+RECIPIENT_EMAILS = ["admin@example.com", "manager@example.com"] # REPLACE with recipient emails
 
 # Define separate workflows for different order types
 WORKFLOW_STEPS = {
@@ -375,54 +366,6 @@ def send_email_notification(order_data):
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
 
-def send_sms_notification(order_data):
-    """Sends an SMS notification to the customer using Twilio."""
-    if not all([TWILIO_CONFIG["ACCOUNT_SID"], TWILIO_CONFIG["AUTH_TOKEN"], TWILIO_CONFIG["FROM_SMS"]]):
-        print("[SMS] Skipping - Twilio SMS not configured in environment variables.")
-        return
-
-    try:
-        client = Client(TWILIO_CONFIG["ACCOUNT_SID"], TWILIO_CONFIG["AUTH_TOKEN"])
-        customer_number = "+91" + order_data['mobile']  # Assuming Indian numbers
-        message_body = f"Hi {order_data['name']}, your order #{order_data['order_id']} has been placed successfully. Total: Rs. {order_data['total_cost']:.2f}. We will contact you shortly. Thank you!"
-
-        message = client.messages.create(
-            body=message_body,
-            from_=TWILIO_CONFIG["FROM_SMS"],
-            to=customer_number
-        )
-        print(f"[SMS] Sent successfully to {customer_number} (SID: {message.sid})")
-    except Exception as e:
-        print(f"[SMS ERROR] {e}")
-
-def send_whatsapp_notification(order_data):
-    """Sends a WhatsApp notification to the customer using Twilio."""
-    if not all([TWILIO_CONFIG["ACCOUNT_SID"], TWILIO_CONFIG["AUTH_TOKEN"], TWILIO_CONFIG["FROM_WHATSAPP"]]):
-        print("[WHATSAPP] Skipping - Twilio WhatsApp not configured in environment variables.")
-        return
-
-    try:
-        client = Client(TWILIO_CONFIG["ACCOUNT_SID"], TWILIO_CONFIG["AUTH_TOKEN"])
-        customer_number = "whatsapp:+91" + order_data['mobile']  # Assuming Indian numbers
-        from_number = "whatsapp:" + TWILIO_CONFIG["FROM_WHATSAPP"]
-        message_body = (
-            f"Hi *{order_data['name']}*,\n\n"
-            f"Your order *#{order_data['order_id']}* has been placed successfully with our factory.\n\n"
-            "*Details:*\n"
-            f"- Product: {order_data['product_type']} - {order_data['dimension']}\n"
-            f"- Total Cost: *₹{order_data['total_cost']:.2f}*\n\n"
-            "We will contact you shortly for confirmation and next steps.\n\nThank you!"
-        )
-
-        message = client.messages.create(
-            body=message_body,
-            from_=from_number,
-            to=customer_number
-        )
-        print(f"[WHATSAPP] Sent successfully to {customer_number} (SID: {message.sid})")
-    except Exception as e:
-        print(f"[WHATSAPP ERROR] {e}")
-
 # =====================================================
 # AUTHENTICATION ROUTES
 # =====================================================
@@ -612,8 +555,6 @@ def submit_order():
             "delivery_date": delivery_date
         }
         send_email_notification(order_info)
-        send_sms_notification(order_info)
-        send_whatsapp_notification(order_info)
 
         flash(f'Order {order_id} created successfully!', 'success')
         return redirect(f'/order_details/{order_id}')
