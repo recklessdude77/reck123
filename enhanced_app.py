@@ -53,7 +53,7 @@ EMAIL_CONFIG = {
     "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
     "SMTP_PORT": int(os.environ.get("SMTP_PORT", 465)),
     "SENDER_EMAIL": "rishaban03@gmail.com",  # REPLACE with your Gmail address
-    "SENDER_PASSWORD": "xxxx xxxx xxxx xxxx" # REPLACE with your Gmail App Password
+    "SENDER_PASSWORD": "mkgb sphs rocs hjug" # REPLACE with your Gmail App Password
 }
 
 RECIPIENT_EMAILS = ["admin@example.com", "manager@example.com"] # REPLACE with recipient emails
