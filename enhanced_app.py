@@ -6,6 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import math
+import resend
 import os
 from functools import wraps
 import json
@@ -50,10 +51,8 @@ except json.JSONDecodeError:
 # Email configuration from environment variables
 # IMPORTANT: Never hardcode passwords in your code.
 EMAIL_CONFIG = {
-    "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
-    "SMTP_PORT": int(os.environ.get("SMTP_PORT", 587)), # Changed default to 587 for better compatibility
-    "SENDER_EMAIL": os.environ.get("SENDER_EMAIL"),
-    "SENDER_PASSWORD": os.environ.get("SENDER_PASSWORD")
+    "FROM_EMAIL": os.environ.get("FROM_EMAIL"), # The verified email to send from (e.g., onboarding@resend.dev)
+    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY")
 }
 
 RECIPIENT_EMAILS = [email.strip() for email in os.environ.get("RECIPIENT_EMAILS", "").split(',') if email.strip()]
@@ -316,21 +315,19 @@ def calculate_cost(acres, product_type, dimension, order_type, soil_type=None, n
     )
 
 def send_email_notification(order_data):
-    """Enhanced email notification with better formatting"""
-    sender_email = EMAIL_CONFIG["SENDER_EMAIL"]
-    password = EMAIL_CONFIG["SENDER_PASSWORD"]
-    smtp_server_host = EMAIL_CONFIG["SMTP_SERVER"]
-    smtp_port = EMAIL_CONFIG["SMTP_PORT"]
+    """Sends email notification using the Resend API."""
+    from_email = EMAIL_CONFIG["FROM_EMAIL"]
+    api_key = EMAIL_CONFIG["RESEND_API_KEY"]
 
-    if not sender_email or not password:
-        print("[EMAIL] Skipping - please configure email settings in environment variables")
+    if not from_email or not api_key:
+        print("[EMAIL] Skipping - FROM_EMAIL or RESEND_API_KEY not configured in environment variables.")
         return False
 
     if not RECIPIENT_EMAILS:
         print("[EMAIL] Skipping - No recipient emails configured in RECIPIENT_EMAILS")
         return False
 
-    print(f"[EMAIL DEBUG] Attempting to send email from {sender_email} to {RECIPIENT_EMAILS} via {smtp_server_host}:{smtp_port}")
+    print(f"[EMAIL DEBUG] Attempting to send email via Resend from {from_email} to {RECIPIENT_EMAILS}")
     
     subject = f"🏭 New Order #{order_data['order_id']} - {order_data['product_type']}"
     
@@ -360,28 +357,21 @@ def send_email_notification(order_data):
     </html>
     """
     
+    resend.api_key = api_key
+    
+    params = {
+        "from": from_email,
+        "to": RECIPIENT_EMAILS,
+        "subject": subject,
+        "html": body
+    }
+    
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = sender_email
-        msg['To'] = ", ".join(RECIPIENT_EMAILS)
-        msg.attach(MIMEText(body, 'html'))
-        
-        if smtp_port == 465:
-            # Use SMTP_SSL for port 465
-            with smtplib.SMTP_SSL(smtp_server_host, smtp_port) as server:
-                server.login(sender_email, password)
-                server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
-        else: # Assume 587 or other with STARTTLS
-            with smtplib.SMTP(smtp_server_host, smtp_port) as server:
-                server.starttls() # Secure the connection
-                server.login(sender_email, password)
-                server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
-
-        print(f"[EMAIL] Sent successfully to {', '.join(RECIPIENT_EMAILS)}")
+        email = resend.Emails.send(params)
+        print(f"[EMAIL] Sent successfully via Resend. ID: {email.get('id')}")
         return True
     except Exception as e:
-        print(f"[EMAIL ERROR] {e}")
+        print(f"[EMAIL ERROR] Resend failed: {e}")
         return False
 
 # =====================================================
