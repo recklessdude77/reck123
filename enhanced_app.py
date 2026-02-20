@@ -44,19 +44,19 @@ try:
         print("⚠️ WARNING: APP_USERS environment variable not set. Using default insecure user.")
         USERS = {"admin": {"password": "admin123", "role": "owner", "name": "Admin"}}
 except json.JSONDecodeError:
-    print("⚠️ ERROR: Could not parse APP_USERS. Please provide a valid JSON string.")
-    USERS = {}
+    print("⚠️ ERROR: Could not parse APP_USERS. Using default insecure user.")
+    USERS = {"admin": {"password": "admin123", "role": "owner", "name": "Admin"}}
 
 # Email configuration from environment variables
 # IMPORTANT: Never hardcode passwords in your code.
 EMAIL_CONFIG = {
     "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
     "SMTP_PORT": int(os.environ.get("SMTP_PORT", 465)),
-    "SENDER_EMAIL": "rishaban03@gmail.com",  # REPLACE with your Gmail address
-    "SENDER_PASSWORD": "mkgb sphs rocs hjug" # REPLACE with your Gmail App Password
+    "SENDER_EMAIL": os.environ.get("SENDER_EMAIL"),
+    "SENDER_PASSWORD": os.environ.get("SENDER_PASSWORD")
 }
 
-RECIPIENT_EMAILS = ["admin@example.com", "manager@example.com"] # REPLACE with recipient emails
+RECIPIENT_EMAILS = [email.strip() for email in os.environ.get("RECIPIENT_EMAILS", "").split(',') if email.strip()]
 
 # Define separate workflows for different order types
 WORKFLOW_STEPS = {
@@ -322,7 +322,13 @@ def send_email_notification(order_data):
 
     if not sender_email or not password:
         print("[EMAIL] Skipping - please configure email settings in environment variables")
-        return
+        return False
+
+    if not RECIPIENT_EMAILS:
+        print("[EMAIL] Skipping - No recipient emails configured in RECIPIENT_EMAILS")
+        return False
+
+    print(f"[EMAIL DEBUG] Attempting to send email from {sender_email} to {RECIPIENT_EMAILS}")
     
     subject = f"🏭 New Order #{order_data['order_id']} - {order_data['product_type']}"
     
@@ -363,8 +369,10 @@ def send_email_notification(order_data):
             server.login(sender_email, password)
             server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
             print(f"[EMAIL] Sent successfully to {', '.join(RECIPIENT_EMAILS)}")
+            return True
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
+        return False
 
 # =====================================================
 # AUTHENTICATION ROUTES
@@ -554,9 +562,11 @@ def submit_order():
             "advance_payment": advance_payment,
             "delivery_date": delivery_date
         }
-        send_email_notification(order_info)
-
-        flash(f'Order {order_id} created successfully!', 'success')
+        if send_email_notification(order_info):
+            flash(f'Order {order_id} created successfully! Email sent.', 'success')
+        else:
+            flash(f'Order {order_id} created, but email failed. Check server logs.', 'warning')
+            
         return redirect(f'/order_details/{order_id}')
     
     except Exception as e:
