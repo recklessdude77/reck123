@@ -6,7 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import math
-import resend
+from mailjet_rest import Client
 import os
 from functools import wraps
 import json
@@ -51,8 +51,9 @@ except json.JSONDecodeError:
 # Email configuration from environment variables
 # IMPORTANT: Never hardcode passwords in your code.
 EMAIL_CONFIG = {
-    "FROM_EMAIL": os.environ.get("FROM_EMAIL"), # The verified email to send from (e.g., onboarding@resend.dev)
-    "RESEND_API_KEY": os.environ.get("RESEND_API_KEY")
+    "FROM_EMAIL": os.environ.get("FROM_EMAIL", "rishaban03@gmail.com"),
+    "MAILJET_API_KEY": os.environ.get("MAILJET_API_KEY"),
+    "MAILJET_SECRET_KEY": os.environ.get("MAILJET_SECRET_KEY")
 }
 
 RECIPIENT_EMAILS = [email.strip() for email in os.environ.get("RECIPIENT_EMAILS", "").split(',') if email.strip()]
@@ -315,63 +316,34 @@ def calculate_cost(acres, product_type, dimension, order_type, soil_type=None, n
     )
 
 def send_email_notification(order_data):
-    """Sends email notification using the Resend API."""
+    from mailjet_rest import Client
+    api_key = EMAIL_CONFIG["MAILJET_API_KEY"]
+    secret_key = EMAIL_CONFIG["MAILJET_SECRET_KEY"]
     from_email = EMAIL_CONFIG["FROM_EMAIL"]
-    api_key = EMAIL_CONFIG["RESEND_API_KEY"]
 
-    if not from_email or not api_key:
-        print("[EMAIL] Skipping - FROM_EMAIL or RESEND_API_KEY not configured in environment variables.")
+    if not api_key or not secret_key:
+        print("[EMAIL] Skipping - Mailjet keys not configured.")
         return False
 
-    if not RECIPIENT_EMAILS:
-        print("[EMAIL] Skipping - No recipient emails configured in RECIPIENT_EMAILS")
-        return False
-
-    print(f"[EMAIL DEBUG] Attempting to send email via Resend from {from_email} to {RECIPIENT_EMAILS}")
+    mailjet = Client(auth=(api_key, secret_key), version='v3.1')
     
-    subject = f"🏭 New Order #{order_data['order_id']} - {order_data['product_type']}"
-    
-    body = f"""
-    <html>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="background-color: #0066FF; color: white; padding: 20px; text-align: center;">
-            <h1>New Factory Order Received</h1>
-        </div>
-        <div style="padding: 20px;">
-            <h2>Order Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Order ID:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data['order_id']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Customer:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data.get('name', 'N/A')}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Mobile:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data.get('mobile', 'N/A')}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Product:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data['product_type']} - {order_data['dimension']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Material:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data['product_material']}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Cost:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>₹{order_data['total_cost']:.2f}</strong></td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Advance Required:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">₹{order_data['advance_payment']:.2f}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Delivery Date:</strong></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{order_data['delivery_date']}</td></tr>
-            </table>
-            <p style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-left: 4px solid #0066FF;">
-                <strong>Action Required:</strong> Please review and assign this order to the appropriate team.
-            </p>
-        </div>
-    </body>
-    </html>
-    """
-    
-    resend.api_key = api_key
-    
-    params = {
-        "from": from_email,
-        "to": RECIPIENT_EMAILS,
-        "subject": subject,
-        "html": body
+    data = {
+        'Messages': [
+            {
+                "From": {"Email": from_email, "Name": "Factory App"},
+                "To": [{"Email": email} for email in RECIPIENT_EMAILS],
+                "Subject": f"New Order #{order_data['order_id']} - {order_data['product_type']}",
+                "HTMLPart": f"<h3>New Order {order_data['order_id']}</h3><p>Customer: {order_data['name']}</p><p>Total: ₹{order_data['total_cost']}</p>"
+            }
+        ]
     }
     
     try:
-        email = resend.Emails.send(params)
-        print(f"[EMAIL] Sent successfully via Resend. ID: {email.get('id')}")
-        return True
+        result = mailjet.send.create(data=data)
+        print(f"[EMAIL] Sent successfully. Status: {result.status_code}")
+        return result.status_code == 200
     except Exception as e:
-        print(f"[EMAIL ERROR] Resend failed: {e}")
+        print(f"[EMAIL ERROR] {e}")
         return False
 
 # =====================================================
