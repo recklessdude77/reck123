@@ -2,9 +2,6 @@ from flask import Flask, render_template, request, redirect, jsonify, send_file,
 import sqlite3
 from datetime import datetime, timedelta
 import uuid
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import math
 from mailjet_rest import Client
 import os
@@ -316,7 +313,6 @@ def calculate_cost(acres, product_type, dimension, order_type, soil_type=None, n
     )
 
 def send_email_notification(order_data):
-    from mailjet_rest import Client
     api_key = EMAIL_CONFIG["MAILJET_API_KEY"]
     secret_key = EMAIL_CONFIG["MAILJET_SECRET_KEY"]
     from_email = EMAIL_CONFIG["FROM_EMAIL"]
