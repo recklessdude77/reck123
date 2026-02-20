@@ -51,7 +51,7 @@ except json.JSONDecodeError:
 # IMPORTANT: Never hardcode passwords in your code.
 EMAIL_CONFIG = {
     "SMTP_SERVER": os.environ.get("SMTP_SERVER", "smtp.gmail.com"),
-    "SMTP_PORT": int(os.environ.get("SMTP_PORT", 465)),
+    "SMTP_PORT": int(os.environ.get("SMTP_PORT", 587)), # Changed default to 587 for better compatibility
     "SENDER_EMAIL": os.environ.get("SENDER_EMAIL"),
     "SENDER_PASSWORD": os.environ.get("SENDER_PASSWORD")
 }
@@ -319,6 +319,8 @@ def send_email_notification(order_data):
     """Enhanced email notification with better formatting"""
     sender_email = EMAIL_CONFIG["SENDER_EMAIL"]
     password = EMAIL_CONFIG["SENDER_PASSWORD"]
+    smtp_server_host = EMAIL_CONFIG["SMTP_SERVER"]
+    smtp_port = EMAIL_CONFIG["SMTP_PORT"]
 
     if not sender_email or not password:
         print("[EMAIL] Skipping - please configure email settings in environment variables")
@@ -328,7 +330,7 @@ def send_email_notification(order_data):
         print("[EMAIL] Skipping - No recipient emails configured in RECIPIENT_EMAILS")
         return False
 
-    print(f"[EMAIL DEBUG] Attempting to send email from {sender_email} to {RECIPIENT_EMAILS}")
+    print(f"[EMAIL DEBUG] Attempting to send email from {sender_email} to {RECIPIENT_EMAILS} via {smtp_server_host}:{smtp_port}")
     
     subject = f"🏭 New Order #{order_data['order_id']} - {order_data['product_type']}"
     
@@ -365,11 +367,19 @@ def send_email_notification(order_data):
         msg['To'] = ", ".join(RECIPIENT_EMAILS)
         msg.attach(MIMEText(body, 'html'))
         
-        with smtplib.SMTP_SSL(EMAIL_CONFIG["SMTP_SERVER"], EMAIL_CONFIG["SMTP_PORT"]) as server:
-            server.login(sender_email, password)
-            server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
-            print(f"[EMAIL] Sent successfully to {', '.join(RECIPIENT_EMAILS)}")
-            return True
+        if smtp_port == 465:
+            # Use SMTP_SSL for port 465
+            with smtplib.SMTP_SSL(smtp_server_host, smtp_port) as server:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
+        else: # Assume 587 or other with STARTTLS
+            with smtplib.SMTP(smtp_server_host, smtp_port) as server:
+                server.starttls() # Secure the connection
+                server.login(sender_email, password)
+                server.sendmail(sender_email, RECIPIENT_EMAILS, msg.as_string())
+
+        print(f"[EMAIL] Sent successfully to {', '.join(RECIPIENT_EMAILS)}")
+        return True
     except Exception as e:
         print(f"[EMAIL ERROR] {e}")
         return False
